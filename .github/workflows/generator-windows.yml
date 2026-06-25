@@ -331,27 +331,35 @@ jobs:
           
       - name: magick stuff
         if: ${{ env.iconlink_url != 'false' }}
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 1
-          max_attempts: 3
-          shell: pwsh
-          command: |
-            Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/iconx.png 
-            mv ./res/icon.ico ./res/icon.ico.bak
-            mv ./res/icon.png ./res/icon.png.bak
-            mv ./res/tray-icon.ico ./res/tray-icon.ico.bak
-            mv ./res/iconx.png ./res/icon.png
-            mv ./res/32x32.png ./res/32x32.png.bak
-            mv ./res/64x64.png ./res/64x64.png.bak
-            mv ./res/128x128.png ./res/128x128.png.bak
-            mv ./res/128x128@2x.png ./res/128x128@2x.png.bak
-            magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
-            cp ./res/icon.ico ./res/tray-icon.ico
-            magick ./res/icon.png -resize 32x32 ./res/32x32.png
-            magick ./res/icon.png -resize 64x64 ./res/64x64.png
-            magick ./res/icon.png -resize 128x128 ./res/128x128.png
-            magick ./res/128x128.png -resize 200% ./res/128x128@2x.png
+        shell: pwsh
+        run: |
+          # S'assurer que le dossier de destination res existe
+          New-Item -ItemType Directory -Force -Path ./res
+
+          # Si le fichier a été envoyé dans les secrets décryptés, on le déplace au bon endroit
+          if (Test-Path "./${{ env.iconlink_file }}") {
+              Copy-Item "./${{ env.iconlink_file }}" "./res/icon.png" -Force
+          } elseif (Test-Path "./res/iconx.png") {
+              mv ./res/iconx.png ./res/icon.png -Force
+          }
+
+          # Sauvegarde des originaux existants s'ils y sont
+          if (Test-Path "./res/icon.ico") { mv ./res/icon.ico ./res/icon.ico.bak -Force }
+          if (Test-Path "./res/tray-icon.ico") { mv ./res/tray-icon.ico ./res/tray-icon.ico.bak -Force }
+          if (Test-Path "./res/32x32.png") { mv ./res/32x32.png ./res/32x32.png.bak -Force }
+          if (Test-Path "./res/64x64.png") { mv ./res/64x64.png ./res/64x64.png.bak -Force }
+          if (Test-Path "./res/128x128.png") { mv ./res/128x128.png ./res/128x128.png.bak -Force }
+          if (Test-Path "./res/128x128@2x.png") { mv ./res/128x128@2x.png ./res/128x128@2x.png.bak -Force }
+
+          # Génération des tailles d'icônes requises par l'application
+          if (Test-Path "./res/icon.png") {
+              magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
+              cp ./res/icon.ico ./res/tray-icon.ico
+              magick ./res/icon.png -resize 32x32 ./res/32x32.png
+              magick ./res/icon.png -resize 64x64 ./res/64x64.png
+              magick ./res/icon.png -resize 128x128 ./res/128x128.png
+              magick ./res/128x128.png -resize 200% ./res/128x128@2x.png
+          }
 
 
       - name: ui.rs icon
